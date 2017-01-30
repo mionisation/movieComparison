@@ -11,14 +11,18 @@ library(shiny)
 library(dplyr)
 
 getCleanedMovieSet <- function(movieSet) {
-  #convert to int, handle NAs
+  #convert to int
+  movieSet$Year <- as.numeric(as.character(movieSet$Year))
+  movieSet$imdbRating <- as.numeric(as.character(movieSet$imdbRating))
+  movieSet$imdbVotes <- as.numeric(as.character(gsub(",","",movieSet$imdbVotes)))
+  movieSet$tomatoReviews <- as.numeric(as.character(gsub(",","",movieSet$tomatoReviews)))
+  movieSet$Metascore <- as.numeric(as.character(movieSet$Metascore))
+  movieSet$tomatoMeter <- as.numeric(as.character(movieSet$tomatoMeter))
   movieSet
 }
 # load movie data
 moviesAll = getCleanedMovieSet(read.csv('data/OMDB_WIDEDISTR_MOVIES_1972_2016.csv', stringsAsFactors = F))
-#allMovies$Year <- as.numeric(as.character(allMovies$Year))
-
-
+movies2016 = getCleanedMovieSet(read.csv('data/OMDB_ALL_MOVIES_2016.csv', stringsAsFactors = F))
 
 #Prepare data structures for layouting
 dataSetSelection = c("OMDB_WIDEDISTR_MOVIES_1972_2016.csv","OMDB_ALL_MOVIES_2016.csv")
@@ -27,8 +31,8 @@ names(dataSetSelection) = c("Most popular movies from 1972 to 2016", "All movie 
 #recMovies = read.csv('OMDB_ALL_MOVIES_2016.csv')
 
 #available movie genres in dataset
-movieGenres <- unique(strsplit(paste(moviesAll$Genre,collapse = ", "), ', ')[[1]])[1:21]
-
+movieGenres <- unique(strsplit(paste(moviesAll$Genre,collapse = ", "), ', ')[[1]])
+browser()
 # Define UI for application, controls on bottom, scatterplot on top
 ui <- fluidPage(
   
@@ -76,8 +80,11 @@ server <- function(input, output) {
     movieSet <- movieSet %>% filter(
       Year >= fromYear,
       Year <= toYear,
-      tomatoReviews > 1000000000000000,
-      imdbVotes >= 1000000000000000000
+      tomatoReviews > 10,
+      imdbVotes >= 100
+      #todo: filter out na's if those columns are selected
+      #movieSet <- movieSet[!is.na(movieSet$imdbRating) & !is.na(movieSet$tomatoMeter) & !is.na(movieSet$Metascore),]
+      
     )
     
     movieSet$xAxis = setAxis(movieSet, xAxis)
@@ -92,12 +99,7 @@ server <- function(input, output) {
   
   output$moviePlot <- renderPlot({
     
-    #todo: do pre processing of data somewhere else ; use filter like in https://github.com/rstudio/shiny-examples/blob/master/051-movie-explorer/server.R
-    #get only rated movies
-    #movies$imdbRating = as.numeric(as.character(movies$imdbRating))
-    #movies$tomatoMeter = as.numeric(as.character(movies$tomatoMeter))
-    #movies <- movies[!is.na(movies$imdbRating) && !is.na(movies$tomatoMeter)]
-    #get movies of specific genre
+    #todo: get movies of specific genre
     #movies <- movies[grep(input$genre,movies$Genre),]
     #s movies <- movies[as.numeric(levels(movies$Year))[movies$Year] >= input$year[1] && as.numeric(levels(movies$Year))[movies$Year] <= input$year[2]]
     #movies <- movies[movies$Year >= input$year[1] && movies$Year <= input$year[2]]
