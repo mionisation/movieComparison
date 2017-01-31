@@ -128,7 +128,8 @@ server <- function(input, output) {
       layer_points(size := 50, size.hover := 200, fillOpacity := 0.2, fillOpacity.hover := 0.5) %>%
       layer_smooths()    %>%    
       add_axis("x", title = names(ratingMeasureSelection[ratingMeasureSelection == input$x])) %>%
-      add_axis("y", title = names(ratingMeasureSelection[ratingMeasureSelection == input$y]))
+      add_axis("y", title = names(ratingMeasureSelection[ratingMeasureSelection == input$y])) %>%
+      set_options(height = 600, width = 800 )
   })
   bind_shiny(moviePlot, "moviePlot")
 }
