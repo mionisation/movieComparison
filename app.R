@@ -9,15 +9,27 @@
 
 library(shiny)
 library(dplyr)
+library(ggvis)
+library(foreach)
 
 getCleanedMovieSet <- function(movieSet) {
-  #convert to int
-  movieSet$Year <- as.numeric(as.character(movieSet$Year))
-  movieSet$imdbRating <- as.numeric(as.character(movieSet$imdbRating))
+  #convert numeric columns to num
+  
+  ##counts of votes
   movieSet$imdbVotes <- as.numeric(as.character(gsub(",","",movieSet$imdbVotes)))
   movieSet$tomatoReviews <- as.numeric(as.character(gsub(",","",movieSet$tomatoReviews)))
+  
+  ##ratings
+  movieSet$imdbRating <- as.numeric(as.character(movieSet$imdbRating))
+  movieSet$tomatoRating <- as.numeric(as.character(movieSet$tomatoRating))
   movieSet$Metascore <- as.numeric(as.character(movieSet$Metascore))
   movieSet$tomatoMeter <- as.numeric(as.character(movieSet$tomatoMeter))
+  movieSet$tomatoFresh <- as.numeric(as.character(movieSet$tomatoFresh))
+  movieSet$tomatoRotten <- as.numeric(as.character(movieSet$tomatoRotten))
+  
+  ##other
+  movieSet$Year <- as.numeric(as.character(movieSet$Year))
+  
   movieSet
 }
 # load movie data
@@ -27,12 +39,13 @@ movies2016 = getCleanedMovieSet(read.csv('data/OMDB_ALL_MOVIES_2016.csv', string
 #Prepare data structures for layouting
 dataSetSelection = c("OMDB_WIDEDISTR_MOVIES_1972_2016.csv","OMDB_ALL_MOVIES_2016.csv")
 names(dataSetSelection) = c("Most popular movies from 1972 to 2016", "All movie releases 2016")
-
+ratingMeasureSelection = c("tomatoMeter", "imdbRating", "metaScore")
+names(ratingMeasureSelection) = c("Tomatometer", "imdb Rating", "Metascore")
 #recMovies = read.csv('OMDB_ALL_MOVIES_2016.csv')
 
 #available movie genres in dataset
-movieGenres <- unique(strsplit(paste(moviesAll$Genre,collapse = ", "), ', ')[[1]])
-browser()
+movieGenres <- unique(strsplit(paste(moviesAll$Genre,collapse = ", "), ', ')[[1]])[1:21]
+
 # Define UI for application, controls on bottom, scatterplot on top
 ui <- fluidPage(
   
@@ -44,14 +57,14 @@ ui <- fluidPage(
     sidebarPanel(
       selectInput('dataSet', 'Select set of movies', dataSetSelection),
       selectInput('genre', 'Genre', movieGenres, multiple = TRUE, selected = "Action"),
-      selectInput('x', 'Horizontal Axis', c("tomatoMeter","tomatoRating", "imdbRating", "metaScore")),
-      selectInput('y', 'Vertical Axis', c("tomatoMeter","tomatoRating", "imdbRating", "metaScore"), selected = "imdbRating"),
+      selectInput('x', 'Horizontal Axis', ratingMeasureSelection),
+      selectInput('y', 'Vertical Axis', ratingMeasureSelection, selected = "imdbRating"),
       sliderInput("year", "Release Year:", min = 1970, max = 2016, c(1970, 2016), step = 1)
     ),
     
     # Show a plot of the generated distribution
     mainPanel(
-      plotOutput("moviePlot", height = 600)
+      ggvisOutput("moviePlot")
     ),
     position = "right",
     fluid = TRUE
@@ -60,54 +73,64 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-
+  ratingMeasureSelection = c("tomatoMeter", "imdbRating", "metaScore")
+  names(ratingMeasureSelection) = c("Tomatometer", "imdb Rating", "Metascore")
   #Filter movies depending on inputs
   movies <- reactive({
+    #read input from user controls
     fromYear <- input$year[1]
     toYear <- input$year[2]
-    xAxis <- input$x
-    yAxis <- input$y
+    xAxisName <- input$x
+    yAxisName <- input$y
     dataSet <- input$dataSet
-    #array or one value?
     genre <- input$genre
     
+    ## which dataset is selected
     if(dataSet == "OMDB_WIDEDISTR_MOVIES_1972_2016.csv") {
       movieSet = moviesAll
     } else {
       movieSet = movies2016
     }
 
+    ##filter year from user controls and min. review numbers
     movieSet <- movieSet %>% filter(
       Year >= fromYear,
       Year <= toYear,
-      tomatoReviews > 10,
-      imdbVotes >= 100
-      #todo: filter out na's if those columns are selected
-      #movieSet <- movieSet[!is.na(movieSet$imdbRating) & !is.na(movieSet$tomatoMeter) & !is.na(movieSet$Metascore),]
-      
+      tomatoReviews > 5, # don't include movies with too few reviews
+      imdbVotes >= 500
     )
     
-    movieSet$xAxis = setAxis(movieSet, xAxis)
-    movieSet$yAxis = setAxis(movieSet, yAxis)
-    
+
+    ##filter out NAs of selected axis
+    movieSet$xAxis = setAxis(movieSet, xAxisName)
+    movieSet$yAxis = setAxis(movieSet, yAxisName)
     movieSet <- as.data.frame(movieSet)
+    movieSet <- movieSet[!is.na(movieSet$xAxis) & !is.na(movieSet$yAxis),]
+    ## filter the movies according to specified genre
+    if(!is.null(genre)){
+      foreach(n=unlist(strsplit(genre, '\t', fixed = TRUE))) %do% {
+        movieSet <- movieSet[grep(n,movieSet$Genre),]
+      }
+    }
+    movieSet
   })
   
   setAxis <- function(set, axisName) {
     switch(axisName, tomatoMeter = set$tomatoMeter, tomatoRating = set$tomatoRating, imdbRating = set$imdbRating, metaScore = set$Metascore )
   }
   
-  output$moviePlot <- renderPlot({
-    
-    #todo: get movies of specific genre
-    #movies <- movies[grep(input$genre,movies$Genre),]
-    #s movies <- movies[as.numeric(levels(movies$Year))[movies$Year] >= input$year[1] && as.numeric(levels(movies$Year))[movies$Year] <= input$year[2]]
-    #movies <- movies[movies$Year >= input$year[1] && movies$Year <= input$year[2]]
-    # draw the histogram with the specified number of bins
+ moviePlot <- reactive({
     m = movies()
-    plot(m$xAxis, m$yAxis, main="Scatterplot Example", 
-         xlab=names(m$xAxis), ylab=names(m$yAxis), pch=19, col="#00000033")
+    # todo:
+    # make two panels with the same controls, display results in the same figure ?
+ 
+    m %>% ggvis(~xAxis, ~yAxis) %>% 
+      layer_points(size := 50, size.hover := 200, fillOpacity := 0.2, fillOpacity.hover := 0.5) %>%
+      layer_smooths()    %>%    
+      add_axis("x", title = names(ratingMeasureSelection[ratingMeasureSelection == input$x])) %>%
+      add_axis("y", title = names(ratingMeasureSelection[ratingMeasureSelection == input$y]))
   })
+  bind_shiny(moviePlot, "moviePlot")
 }
 
 # Run the application 
