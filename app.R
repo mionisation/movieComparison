@@ -56,7 +56,7 @@ ui <- fluidPage(
   fluidRow(
     column( width = 2,
       selectInput('dataSet', 'Select set of movies', dataSetSelection),
-      selectInput('genre', 'Genre', movieGenres, multiple = TRUE),
+      selectInput('genre', 'Genre', movieGenres, multiple = TRUE, selected = "Action"),
       selectInput('x', 'Horizontal Axis', ratingMeasureSelection),
       selectInput('y', 'Vertical Axis', ratingMeasureSelection, selected = "imdbRating"),
       sliderInput("year", "Release Year:", min = 1970, max = 2016, c(1970, 2016), step = 1)
@@ -145,11 +145,12 @@ server <- function(input, output) {
     # todo:
     # make two panels with the same controls, display results in the same figure ?
     # split up server and ui parts
-    m %>% ggvis(~xAxis, ~yAxis) %>% 
-      layer_points(size := 50, size.hover := 200, fillOpacity := 0.2, fillOpacity.hover := 0.5) %>%
+    m %>% ggvis(~xAxis, ~yAxis, fill = ~Year) %>% 
+      layer_points(size := 50, size.hover := 200, fillOpacity := 0.2, stroke := 1, fillOpacity.hover := 0.5) %>%
       layer_smooths()    %>%    
       add_axis("x", title = xAxisName()) %>%
       add_axis("y", title = yAxisName()) %>%
+      add_tooltip(on = "hover", html = function(data){(console.log(data))}) %>%
       set_options(height = 600, width = 800 )
   })
   bind_shiny(moviePlot, "moviePlot")
