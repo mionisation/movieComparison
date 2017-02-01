@@ -67,7 +67,8 @@ ui <- fluidPage(
             #normalize ratings to compare better (include correlation)
             #
             textOutput("avgMoviesetX"),
-            textOutput("avgMoviesetY")
+            textOutput("avgMoviesetY"),
+            helpText("Most controversial in this selection:")
     ),
     
     # Show a plot of the generated distribution
@@ -146,11 +147,11 @@ server <- function(input, output) {
     # make two panels with the same controls, display results in the same figure ?
     # split up server and ui parts
     m %>% ggvis(~xAxis, ~yAxis, fill = ~Year) %>% 
-      layer_points(size := 50, size.hover := 200, fillOpacity := 0.2, stroke := 1, fillOpacity.hover := 0.5) %>%
+      layer_points(size := 50, size.hover := 200, fillOpacity := 0.2, stroke := 1, fillOpacity.hover := 0.5, key := ~Title) %>%
       layer_smooths()    %>%    
       add_axis("x", title = xAxisName()) %>%
       add_axis("y", title = yAxisName()) %>%
-      add_tooltip(on = "hover", html = function(data){(console.log(data))}) %>%
+      add_tooltip(on = "hover", html = function(data){(paste0("<b>", data$Title, "</b><br>", data$Year, "<br>"))}) %>%
       set_options(height = 600, width = 800 )
   })
   bind_shiny(moviePlot, "moviePlot")
