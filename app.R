@@ -50,22 +50,31 @@ movieGenres <- unique(strsplit(paste(moviesAll$Genre,collapse = ", "), ', ')[[1]
 ui <- fluidPage(
   
   # Application title
-  titlePanel("Comparisons of Movie Reviews"),
+  titlePanel("Comparisons of Movie Reviews", windowTitle = "ReviewCompare"),
   
   # Sidebar with a slider input for number of bins 
-  sidebarLayout(
-    sidebarPanel(
+  fluidRow(
+    column( width = 2,
       selectInput('dataSet', 'Select set of movies', dataSetSelection),
-      selectInput('genre', 'Genre', movieGenres, multiple = TRUE, selected = "Action"),
+      selectInput('genre', 'Genre', movieGenres, multiple = TRUE),
       selectInput('x', 'Horizontal Axis', ratingMeasureSelection),
       selectInput('y', 'Vertical Axis', ratingMeasureSelection, selected = "imdbRating"),
       sliderInput("year", "Release Year:", min = 1970, max = 2016, c(1970, 2016), step = 1)
     ),
+    column( width = 2,
+            helpText("Average of the selection:"),
+            #todo: maybe include histograms here,
+            #normalize ratings to compare better (include correlation)
+            #
+            textOutput("avgMoviesetX"),
+            textOutput("avgMoviesetY")
+    ),
     
     # Show a plot of the generated distribution
-    mainPanel(
+    column( width = 6,
       ggvisOutput("moviePlot")
     ),
+
     position = "right",
     fluid = TRUE
   )
@@ -119,16 +128,28 @@ server <- function(input, output) {
     switch(axisName, tomatoMeter = set$tomatoMeter, tomatoRating = set$tomatoRating, imdbRating = set$imdbRating, metaScore = set$Metascore )
   }
   
- moviePlot <- reactive({
+  output$avgMoviesetX <- renderText(expr = paste(xAxisName(), round(mean(movies()$xAxis), digits = 2)))
+  
+  output$avgMoviesetY <- renderText(expr = paste(yAxisName(), round(mean(movies()$yAxis), digits = 2)))
+ 
+  xAxisName <- reactive({
+    names(ratingMeasureSelection[ratingMeasureSelection == input$x])
+  })
+  
+  yAxisName <- reactive({
+    names(ratingMeasureSelection[ratingMeasureSelection == input$y])
+  })
+ 
+  moviePlot <- reactive({
     m = movies()
     # todo:
     # make two panels with the same controls, display results in the same figure ?
- 
+    # split up server and ui parts
     m %>% ggvis(~xAxis, ~yAxis) %>% 
       layer_points(size := 50, size.hover := 200, fillOpacity := 0.2, fillOpacity.hover := 0.5) %>%
       layer_smooths()    %>%    
-      add_axis("x", title = names(ratingMeasureSelection[ratingMeasureSelection == input$x])) %>%
-      add_axis("y", title = names(ratingMeasureSelection[ratingMeasureSelection == input$y])) %>%
+      add_axis("x", title = xAxisName()) %>%
+      add_axis("y", title = yAxisName()) %>%
       set_options(height = 600, width = 800 )
   })
   bind_shiny(moviePlot, "moviePlot")
