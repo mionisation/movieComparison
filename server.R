@@ -14,10 +14,15 @@ function(input, output) {
     yAxisName <- input$y
     dataSet <- input$dataSet
     genre <- input$genre
+    #restricting reviewCount
+    tomatoMinCount = 5
+    imdbMinCount = 100
     
     ## which dataset is selected
     if(dataSet == "OMDB_WIDEDISTR_MOVIES_1972_2016.csv") {
       movieSet = moviesAll
+      tomatoMinCount = 10
+      imdbMinCount = 500
     } else {
       movieSet = movies2016
     }
@@ -26,8 +31,8 @@ function(input, output) {
     movieSet <- movieSet %>% filter(
       Year >= fromYear,
       Year <= toYear,
-      tomatoReviews > 10, # don't include movies with too few reviews
-      imdbVotes >= 500
+      tomatoReviews > tomatoMinCount, # don't include movies with too few reviews
+      imdbVotes >= imdbMinCount
     )
     
     

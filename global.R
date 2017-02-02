@@ -1,7 +1,7 @@
 
 #Prepare data structures for layouting
 dataSetSelection <- c("OMDB_WIDEDISTR_MOVIES_1972_2016.csv","OMDB_ALL_MOVIES_2016.csv")
-names(dataSetSelection) = c("Most popular movies from 1972 to 2016", "All movie releases 2016")
+names(dataSetSelection) = c("Most popular movies 1972-2016", "All movie releases 2016")
 ratingMeasureSelection = c("tomatoMeter", "imdbRating", "metaScore")
 names(ratingMeasureSelection) = c("Tomatometer", "imdb Rating", "Metascore")
 
